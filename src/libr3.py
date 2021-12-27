@@ -743,10 +743,49 @@ evap_outlet""".split('\n')
         
         return zip(*result)
 
-    def iterate2(self,T_gen_outlet,T_abs_outlet):
+    @classmethod
+    # old iterate2
+    # TODO: test
+    def given_T(cls,T_evap,T_cond,T_gen_outlet,T_abs_outlet,m_pump=1.0,
+            Eff_SHX=0.64):
         """Resolve the concentrations. Not yet implemented."""
-        pass
-    
+        
+        # o que acho que seria o método implementado para achar x dado P,T
+        # (libr_props.massFraction) parece que não retorna os valores originais, então
+        # esta função get_x faria o serviço
+        
+        # se o fsolve der problema de convergência o resultado está errado
+        # (não dá erro, só printa um warning)
+        
+        P_evap,P_cond = CP.PropsSI('P',
+                        'T',[libr_props.C2K(T_evap),libr_props.C2K(T_cond)],
+                        'Q',[1.,1.],
+                        'Water')
+
+        def get_x(T,P):
+            # T em C, P em Pa
+            P_bar = P*1e-5
+            T_K = libr_props.C2K(T)
+            def x_res(x):
+                return T_K-libr_props.temperature(P_bar,x)
+            x = float(fsolve(x_res,0.6))
+            return x
+        
+        x1,x2 = get_x(T_gen_outlet,P_evap),get_x(T_abs_outlet,P_cond)
+        if any(libr_props.is_crystalized(T,x) for T,x in zip(
+                (T_gen_outlet,T_abs_outlet),(x1,x2))):
+            raise ValueError("Pair (T,x) crystallized!")
+        #libr_props.is_crystalized(T,x)
+        
+        return cls(
+            T_evap=T_evap,
+            T_cond=T_cond,
+            x1=x1,
+            x2=x2,
+            m_pump=m_pump,
+            Eff_SHX=Eff_SHX)
+        
+        
     def buildGeneratorHeatCurve(self):
         """Provide process heat canonical curve for generator in various forms.
         For purpose of external heat exchange,  generator process goes ...
@@ -966,5 +1005,5 @@ def main():
     
     return c
     
-if __name__ == "__main__":
-    c=main()
+#if __name__ == "__main__":
+#    c=main()

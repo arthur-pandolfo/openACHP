@@ -38,6 +38,7 @@ from CoolProp.CoolProp import PropsSI
 from CoolProp import AbstractState, constants
 from hw2_1 import CelsiusToKelvin as C2K, KelvinToCelsius as K2C
 from scipy.optimize import minimize
+from scipy.interpolate import interp1d
 import numpy as np
 
 MW_LiBr = 0.08685 # kg/mol
@@ -426,7 +427,8 @@ rho_crit_molar = {} mol/m3""".format(T_crit,rho_crit_molar))
     MW = x_N * MW_LiBr + (1 - x_N) * MW_H2O
     result = d_molar * MW # kg/m^3
     return result
-    
+
+# function to check whethe
 crystallization_data_T = np.array(
       [ -53.6 ,  -49.32,  -42.12,  -36.32,  -32.96,  -29.17,  -25.24,
         -16.11,  -13.47,   -8.94,   -4.54,    1.11,    5.1 ,    9.93,
@@ -439,6 +441,22 @@ crystallization_data_x = np.array(
         0.5867,  0.6063,  0.625 ,  0.6396,  0.6517,  0.6582,  0.6616,
         0.6655,  0.6737,  0.6739,  0.6832,  0.6827,  0.6899,  0.6905,
         0.7004,  0.7008])
+
+x_to_T_crystal = interp1d(crystallization_data_x,crystallization_data_T)
+
+x_min_crystal = min(x_to_T_crystal.x)
+x_max_crystal = max(x_to_T_crystal.x)
+
+def is_crystalized(T,x):
+    
+    if x < x_min_crystal:
+        return False
+    
+    # a curva parece ser 'reta' por essas bandas no gráfico do tchô
+    if x > x_max_crystal:
+        x = x_max_crystal
+    
+    return T < float(x_to_T_crystal(x))
 
 
 if __name__ == "__main__":
